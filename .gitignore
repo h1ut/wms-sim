@@ -1,0 +1,32 @@
+# Claude Code
+.claude/
+CLAUDE.md
+
+# Vite default assets
+frontend/src/assets/react.svg
+frontend/src/assets/vite.svg
+frontend/src/assets/hero.png
+
+# Vite default README
+frontend/README.md
+
+# Rust
+target/
+Cargo.lock
+
+# Node / Vite
+frontend/node_modules/
+frontend/dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Env
+.env
+.env.local
