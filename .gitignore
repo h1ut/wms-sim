@@ -12,7 +12,6 @@ frontend/README.md
 
 # Rust
 target/
-Cargo.lock
 
 # Node / Vite
 frontend/node_modules/
