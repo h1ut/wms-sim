@@ -5,21 +5,31 @@ import MetricsPanel from './components/MetricsPanel';
 import OrderHistory from './components/OrderHistory';
 import WarehouseCanvas from './components/WarehouseCanvas';
 import { useWebSocket } from './hooks/useWebSocket';
+import { useWindowSize } from './hooks/useWindowSize';
 import LandingPage from './pages/LandingPage';
 import type { PlacementMode } from './types';
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
 
 export default function App() {
+  const { width } = useWindowSize();
+  const mobile = width < 768;
+
   const [page, setPage]               = useState<'landing' | 'sim'>('landing');
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showHelp, setShowHelp]       = useState(false);
   const [placementMode, setPlacementMode] = useState<PlacementMode>('obstacle');
   const [sidebarWidth, setSidebarWidth]   = useState(240);
+  const [sidebarOpen, setSidebarOpen]     = useState(true);
   const [selectedRobotId, setSelectedRobotId] = useState<number | null>(null);
   const draggingRef = useRef(false);
   const dragStartX  = useRef(0);
   const dragStartW  = useRef(240);
+
+  // On mobile sidebar is hidden by default; on desktop always visible.
+  useEffect(() => {
+    setSidebarOpen(!mobile);
+  }, [mobile]);
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -63,8 +73,17 @@ export default function App() {
         <button onClick={() => setPage('landing')} style={styles.backBtn}>← Home</button>
         <span style={styles.title}>⬡ WMS·SIM</span>
         <div style={styles.headerRight}>
-          {state.paused && <span style={{ fontSize: 11, color: '#fd9644', fontWeight: 700 }}>⏸ PAUSED</span>}
-          <span style={styles.tick}>Tick {state.tick.toLocaleString()}</span>
+          {state.paused && !mobile && <span style={{ fontSize: 11, color: '#fd9644', fontWeight: 700 }}>⏸ PAUSED</span>}
+          {!mobile && <span style={styles.tick}>Tick {state.tick.toLocaleString()}</span>}
+          {/* Stats toggle — mobile only */}
+          {mobile && (
+            <button
+              onClick={() => setSidebarOpen(o => !o)}
+              style={{ ...styles.helpBtn, width: 'auto', padding: '0 8px', borderRadius: 4, fontSize: 11, fontWeight: 700 }}
+            >
+              {sidebarOpen ? '✕ Stats' : '📊 Stats'}
+            </button>
+          )}
           <button onClick={() => setShowHelp(true)} style={styles.helpBtn} title="Instructions">?</button>
         </div>
       </header>
@@ -107,33 +126,48 @@ export default function App() {
           })()}
         </div>
 
-        {/* Drag handle */}
-        <div
-          style={styles.dragHandle}
-          onMouseDown={e => {
-            draggingRef.current = true;
-            dragStartX.current  = e.clientX;
-            dragStartW.current  = sidebarWidth;
-            document.body.style.cursor = 'col-resize';
-          }}
-        />
-
-        <div style={{ ...styles.sidebar, width: sidebarWidth }}>
-          <MetricsPanel
-            tick={state.tick}
-            metrics={state.metrics}
-            robots={state.robots}
-            orders={state.orders}
-            connected={state.connected}
-            score={state.score}
-            onTimeCount={state.onTimeCount}
-            lateCount={state.lateCount}
-            slaLimit={state.slaLimit}
-            throughputHistory={state.throughputHistory}
-            benchmarkResult={state.benchmarkResult}
+        {/* Drag handle — desktop only */}
+        {!mobile && (
+          <div
+            style={styles.dragHandle}
+            onMouseDown={e => {
+              draggingRef.current = true;
+              dragStartX.current  = e.clientX;
+              dragStartW.current  = sidebarWidth;
+              document.body.style.cursor = 'col-resize';
+            }}
           />
-          <OrderHistory orders={state.orders} currentTick={state.tick} />
-        </div>
+        )}
+
+        {/* Sidebar: normal flow on desktop, overlay on mobile */}
+        {sidebarOpen && (
+          <div style={mobile ? {
+            ...styles.sidebar,
+            position: 'absolute',
+            top: 0, right: 0, bottom: 0,
+            width: Math.min(width - 32, 300),
+            zIndex: 30,
+            boxShadow: '-4px 0 20px rgba(0,0,0,0.5)',
+          } : {
+            ...styles.sidebar,
+            width: sidebarWidth,
+          }}>
+            <MetricsPanel
+              tick={state.tick}
+              metrics={state.metrics}
+              robots={state.robots}
+              orders={state.orders}
+              connected={state.connected}
+              score={state.score}
+              onTimeCount={state.onTimeCount}
+              lateCount={state.lateCount}
+              slaLimit={state.slaLimit}
+              throughputHistory={state.throughputHistory}
+              benchmarkResult={state.benchmarkResult}
+            />
+            <OrderHistory orders={state.orders} currentTick={state.tick} />
+          </div>
+        )}
       </div>
 
       {/* Controls */}
