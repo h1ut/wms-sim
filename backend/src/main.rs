@@ -80,11 +80,12 @@ async fn main() {
         .with_state(app_state)
         .fallback_service(serve_dir);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3001")
+    let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}"))
         .await
-        .expect("Failed to bind port 3001");
+        .unwrap_or_else(|_| panic!("Failed to bind port {port}"));
 
-    tracing::info!("Warehouse sim server listening on ws://0.0.0.0:3001/ws");
+    tracing::info!("Warehouse sim server listening on ws://0.0.0.0:{port}/ws");
     axum::serve(listener, app)
         .await
         .expect("Server error");
