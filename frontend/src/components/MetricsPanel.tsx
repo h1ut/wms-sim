@@ -43,10 +43,10 @@ export default function MetricsPanel({
       {/* Connection badge */}
       <div style={{
         ...s.badge,
-        background:   connected ? '#20bf6b18' : '#e8454518',
-        borderColor:  connected ? '#20bf6b'   : '#e84545',
+        background:   connected ? '#20bf6b10' : '#e8454510',
+        borderColor:  connected ? 'var(--green)' : 'var(--red)',
       }}>
-        <span style={{ color: connected ? '#20bf6b' : '#e84545', fontWeight: 700 }}>
+        <span style={{ color: connected ? 'var(--green)' : 'var(--red)', fontWeight: 700 }}>
           {connected ? '● LIVE' : '○ DISCONNECTED'}
         </span>
       </div>
@@ -161,7 +161,7 @@ function Stat({ label, value, accent, warn }: {
       <span style={s.rowLabel}>{label}</span>
       <span style={{
         ...s.rowValue,
-        color: warn ? '#e84545' : accent ? '#20bf6b' : '#e0e0f0',
+        color: warn ? 'var(--red)' : accent ? 'var(--green)' : 'var(--text)',
       }}>
         {value}
       </span>
@@ -170,14 +170,14 @@ function Stat({ label, value, accent, warn }: {
 }
 
 function Divider() {
-  return <div style={{ borderTop: '1px solid #1e1e3a', margin: '7px 0' }} />;
+  return <div style={{ borderTop: '1px solid var(--border)', margin: '7px 0' }} />;
 }
 
 function LegendRow({ color, label }: { color: string; label: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
-      <div style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
-      <span style={{ color: '#606090', fontSize: 10 }}>{label}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+      <div style={{ width: 8, height: 8, borderRadius: 0, background: color, flexShrink: 0 }} />
+      <span style={{ color: 'var(--text-muted)', fontSize: 10, letterSpacing: '0.03em' }}>{label}</span>
     </div>
   );
 }
@@ -200,17 +200,17 @@ function BenchmarkTable({ result }: { result: BenchmarkResultMessage }) {
   const { prioritized: p, astar: a } = result;
   const pWins = p.throughput >= a.throughput && p.collisions <= a.collisions;
   return (
-    <div style={{ fontSize: 10, color: '#a0a0c0' }}>
+    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
       <div style={bt.hdr}>
         <span />
-        <span style={{ color: '#45aaf2' }}>Prioritized</span>
-        <span style={{ color: '#fd9644' }}>A* Indep.</span>
+        <span style={{ color: 'var(--blue)' }}>Prioritized</span>
+        <span style={{ color: 'var(--orange)' }}>A* Indep.</span>
       </div>
       <BRow label="Orders" pVal={p.throughput} aVal={a.throughput} higherBetter />
       <BRow label="Collisions" pVal={p.collisions} aVal={a.collisions} higherBetter={false} />
       <BRow label="Avg path" pVal={p.avg_path_length} aVal={a.avg_path_length} higherBetter={false} decimals />
-      <div style={{ color: pWins ? '#20bf6b' : '#e84545', fontWeight: 700, marginTop: 4, fontSize: 10 }}>
-        {pWins ? '✓ Prioritized wins' : '✗ A* wins (fewer ticks?)'}
+      <div style={{ color: pWins ? 'var(--green)' : 'var(--red)', fontWeight: 700, marginTop: 6, fontSize: 10, letterSpacing: '0.04em' }}>
+        {pWins ? '✓ PRIORITIZED WINS' : '✗ A* WINS'}
       </div>
     </div>
   );
@@ -223,9 +223,9 @@ function BRow({ label, pVal, aVal, higherBetter, decimals }: {
   const pBetter = higherBetter ? pVal >= aVal : pVal <= aVal;
   return (
     <div style={bt.hdr}>
-      <span style={{ color: '#50508a' }}>{label}</span>
-      <span style={{ color: pBetter ? '#20bf6b' : '#e0e0f0', fontWeight: pBetter ? 700 : 400 }}>{fmt(pVal)}</span>
-      <span style={{ color: !pBetter ? '#20bf6b' : '#e0e0f0', fontWeight: !pBetter ? 700 : 400 }}>{fmt(aVal)}</span>
+      <span style={{ color: 'var(--text-dim)' }}>{label}</span>
+      <span style={{ color: pBetter ? 'var(--green)' : 'var(--text)', fontWeight: pBetter ? 700 : 400 }}>{fmt(pVal)}</span>
+      <span style={{ color: !pBetter ? 'var(--green)' : 'var(--text)', fontWeight: !pBetter ? 700 : 400 }}>{fmt(aVal)}</span>
     </div>
   );
 }
@@ -233,63 +233,71 @@ function BRow({ label, pVal, aVal, higherBetter, decimals }: {
 const bt = {
   hdr: {
     display: 'grid',
-    gridTemplateColumns: '56px 1fr 1fr',
+    gridTemplateColumns: '60px 1fr 1fr',
     gap: 4,
-    marginBottom: 3,
+    marginBottom: 4,
     fontSize: 10,
+    letterSpacing: '0.03em',
   },
 } as const;
 
 const s = {
   panel: {
     width: '100%',
-    background: '#13132a',
-    padding: '10px 12px',
+    background: 'var(--surface)',
+    padding: '12px 14px',
     display: 'flex',
     flexDirection: 'column' as const,
     gap: 3,
     overflowY: 'auto' as const,
-    fontFamily: 'monospace',
+    fontFamily: 'var(--sans)',
     fontSize: 11,
-    color: '#a0a0c0',
+    color: 'var(--text-muted)',
     flexShrink: 0,
   },
   badge: {
     border: '1px solid',
-    borderRadius: 4,
-    padding: '3px 6px',
+    borderRadius: 0,
+    padding: '4px 8px',
     textAlign: 'center' as const,
-    marginBottom: 6,
+    marginBottom: 8,
     fontSize: 10,
+    letterSpacing: '0.08em',
   },
   scoreBox: {
     display: 'flex',
     alignItems: 'center',
-    gap: 10,
-    background: '#0f0f22',
-    borderRadius: 6,
-    padding: '8px 10px',
-    marginBottom: 2,
-    border: '1px solid #1e1e3a',
+    gap: 12,
+    background: 'var(--bg)',
+    borderRadius: 0,
+    padding: '10px 12px',
+    marginBottom: 4,
+    border: '1px solid var(--border)',
   },
   gradeLetter: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: 900,
     lineHeight: 1,
+    fontFamily: 'var(--display)',
   },
   scoreRight: {
     display: 'flex',
     flexDirection: 'column' as const,
+    gap: 2,
   },
   scoreNum: {
     fontSize: 18,
     fontWeight: 700,
-    color: '#e0e0f0',
+    color: 'var(--text)',
+    letterSpacing: '-0.02em',
+    fontFamily: 'var(--mono)',
   },
   scoreLabel: {
     fontSize: 9,
-    color: '#5050a0',
-    letterSpacing: '0.06em',
+    color: 'var(--text-dim)',
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase' as const,
+    fontFamily: 'var(--sans)',
   },
   row: {
     display: 'flex',
@@ -297,19 +305,23 @@ const s = {
     alignItems: 'center',
   },
   rowLabel: {
-    color: '#50508a',
-    fontSize: 10,
+    color: 'var(--text-dim)',
+    fontSize: 11,
+    fontFamily: 'var(--sans)',
   },
   rowValue: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: 11,
+    fontFamily: 'var(--mono)',
   },
   sectionLabel: {
     fontSize: 9,
-    letterSpacing: '0.1em',
+    letterSpacing: '0.12em',
     textTransform: 'uppercase' as const,
-    color: '#404070',
-    marginTop: 1,
+    color: 'var(--text-dim)',
+    marginTop: 2,
+    paddingTop: 2,
+    fontFamily: 'var(--sans)',
   },
   roiInputRow: {
     display: 'flex',
@@ -318,17 +330,18 @@ const s = {
     marginBottom: 3,
   },
   roiInputLabel: {
-    color: '#50508a',
-    fontSize: 10,
+    color: 'var(--text-dim)',
+    fontSize: 11,
+    fontFamily: 'var(--sans)',
   },
   roiInput: {
-    width: 64,
-    background: '#0f0f22',
-    border: '1px solid #252545',
-    color: '#e0e0f0',
-    borderRadius: 3,
-    padding: '1px 4px',
-    fontFamily: 'monospace',
-    fontSize: 10,
+    width: 68,
+    background: 'var(--bg)',
+    border: '1px solid var(--border)',
+    color: 'var(--text)',
+    borderRadius: 0,
+    padding: '2px 6px',
+    fontFamily: 'var(--mono)',
+    fontSize: 11,
   },
 } as const;

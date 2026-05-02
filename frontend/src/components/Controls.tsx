@@ -36,7 +36,7 @@ export default function Controls({
     <div style={s.bar}>
       {/* Speed */}
       <label style={s.label}>
-        Speed&nbsp;<strong style={{ color: '#f7b731' }}>{tps} TPS</strong>
+        Speed&nbsp;<strong style={{ color: 'var(--accent)' }}>{tps} TPS</strong>
         <input type="range" min={1} max={20} value={tps} style={s.slider}
           onChange={e => onSend({ type: 'set_speed', tps: Number(e.target.value) })} />
       </label>
@@ -63,9 +63,9 @@ export default function Controls({
           onClick={() => onPlacementMode(mode)}
           style={{
             ...s.modeBtn,
-            background:  placementMode === mode ? '#2d3561' : 'transparent',
-            borderColor: placementMode === mode ? '#f7b731'  : '#252545',
-            color:       placementMode === mode ? '#f7b731'  : '#7070a0',
+            background:  placementMode === mode ? 'var(--surface-2)' : 'transparent',
+            borderColor: placementMode === mode ? 'var(--accent)'    : 'var(--border)',
+            color:       placementMode === mode ? 'var(--accent)'    : 'var(--text-muted)',
           }}
         >
           {label}
@@ -77,11 +77,11 @@ export default function Controls({
       {/* Pause / Step */}
       <button
         onClick={() => onSend({ type: 'set_paused', paused: !paused })}
-        style={{ ...s.btn, background: paused ? '#fd9644' : '#2d3561', minWidth: 72 }}
+        style={{ ...s.btn, background: paused ? 'var(--orange)' : 'var(--surface-2)', color: paused ? '#08080f' : 'var(--text)', minWidth: 72, borderColor: paused ? 'var(--orange)' : 'var(--border)' }}
       >
         {paused ? '▶ Resume' : '⏸ Pause'}
       </button>
-      <Btn label="⏭ Step" onClick={() => onSend({ type: 'step_tick' })} color={paused ? '#45aaf2' : '#1e2a40'} />
+      <Btn label="Step" onClick={() => onSend({ type: 'step_tick' })} color={paused ? 'var(--blue)' : 'var(--surface-2)'} textColor={paused ? '#08080f' : 'var(--text-muted)'} />
 
       <Sep />
 
@@ -96,51 +96,54 @@ export default function Controls({
         onClick={handleStressTest}
         style={{
           ...s.btn,
-          background: stressFlash ? '#20bf6b' : '#e84545',
-          transition: 'background 0.3s',
+          background: stressFlash ? 'var(--green)' : 'transparent',
+          color: stressFlash ? '#08080f' : 'var(--red)',
+          borderColor: stressFlash ? 'var(--green)' : 'var(--red)',
+          transition: 'all 0.3s',
         }}
       >
-        {stressFlash ? '✓ Launched!' : '🚨 Stress Test'}
+        {stressFlash ? 'Launched!' : 'Stress Test'}
       </button>
 
       <Btn
-        label={showHeatmap ? '🌡 Heat ON' : '🌡 Heatmap'}
+        label={showHeatmap ? 'Heat ON' : 'Heatmap'}
         onClick={onToggleHeatmap}
-        color={showHeatmap ? '#a55eea' : '#2d3561'}
+        color={showHeatmap ? 'var(--purple)' : 'var(--surface-2)'}
+        textColor={showHeatmap ? '#08080f' : 'var(--text-muted)'}
       />
 
       <Sep />
 
-      <Btn label="🔄 Reset" onClick={() => onSend({ type: 'reset_simulation' })} color="#3a1a1a" />
-      <Btn label="⚡ Benchmark" onClick={() => onSend({ type: 'run_benchmark', ticks: 150 })} color="#1a4060" />
+      <Btn label="Reset" onClick={() => onSend({ type: 'reset_simulation' })} color="var(--surface-2)" />
+      <Btn label="Benchmark" onClick={() => onSend({ type: 'run_benchmark', ticks: 150 })} color="var(--surface-2)" />
     </div>
   );
 }
 
 function Sep() {
-  return <div style={{ width: 1, height: 24, background: '#252545', flexShrink: 0 }} />;
+  return <div style={{ width: 1, height: 20, background: 'var(--border)', flexShrink: 0 }} />;
 }
 
-function Btn({ label, onClick, color = '#2d3561' }: {
-  label: string; onClick: () => void; color?: string;
+function Btn({ label, onClick, color = 'var(--surface-2)', textColor }: {
+  label: string; onClick: () => void; color?: string; textColor?: string;
 }) {
   return (
-    <button onClick={onClick} style={{ ...s.btn, background: color }}>{label}</button>
+    <button onClick={onClick} style={{ ...s.btn, background: color, color: textColor ?? 'var(--text)' }}>{label}</button>
   );
 }
 
 const s = {
   bar: {
     height: 44,
-    background: '#13132a',
-    borderTop: '1px solid #252545',
+    background: 'var(--surface)',
+    borderTop: '1px solid var(--border)',
     display: 'flex',
     alignItems: 'center',
     gap: 8,
-    padding: '0 12px',
-    fontFamily: 'monospace',
-    fontSize: 11,
-    color: '#a0a0c0',
+    padding: '0 16px',
+    fontFamily: 'var(--sans)',
+    fontSize: 12,
+    color: 'var(--text-muted)',
     flexShrink: 0,
     overflowX: 'auto' as const,
   },
@@ -149,41 +152,42 @@ const s = {
     alignItems: 'center',
     gap: 6,
     flexShrink: 0,
+    fontFamily: 'var(--sans)',
   },
   slider: {
-    accentColor: '#f7b731',
+    accentColor: 'var(--accent)',
     cursor: 'pointer',
     width: 80,
   },
   select: {
-    background: '#1a1a2e',
-    color: '#e0e0f0',
-    border: '1px solid #252545',
-    borderRadius: 4,
-    padding: '2px 4px',
-    fontFamily: 'monospace',
-    fontSize: 11,
+    background: 'var(--bg)',
+    color: 'var(--text)',
+    border: '1px solid var(--border)',
+    borderRadius: 2,
+    padding: '3px 6px',
+    fontFamily: 'var(--sans)',
+    fontSize: 12,
     cursor: 'pointer',
   },
   modeBtn: {
     border: '1px solid',
-    borderRadius: 4,
-    padding: '3px 8px',
-    fontFamily: 'monospace',
-    fontSize: 11,
+    borderRadius: 2,
+    padding: '3px 9px',
+    fontFamily: 'var(--sans)',
+    fontSize: 12,
     cursor: 'pointer',
     flexShrink: 0,
-    transition: 'all 0.15s',
+    transition: 'all 0.12s',
   },
   btn: {
-    color: '#fff',
-    border: 'none',
-    borderRadius: 4,
-    padding: '4px 9px',
-    fontFamily: 'monospace',
-    fontSize: 11,
+    color: 'var(--text)',
+    border: '1px solid var(--border)',
+    borderRadius: 2,
+    padding: '4px 10px',
+    fontFamily: 'var(--sans)',
+    fontSize: 12,
     cursor: 'pointer',
-    fontWeight: 700,
+    fontWeight: 600,
     flexShrink: 0,
   },
   robotGroup: {
@@ -193,24 +197,26 @@ const s = {
     flexShrink: 0,
   },
   iconBtn: {
-    width: 20,
-    height: 20,
-    background: '#2d3561',
-    border: 'none',
-    borderRadius: 3,
-    color: '#e0e0f0',
+    width: 22,
+    height: 22,
+    background: 'var(--surface-2)',
+    border: '1px solid var(--border)',
+    borderRadius: 2,
+    color: 'var(--text)',
     fontSize: 14,
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     lineHeight: 1,
+    fontFamily: 'var(--sans)',
   },
   robotCount: {
-    fontSize: 11,
-    color: '#e0e0f0',
+    fontSize: 12,
+    color: 'var(--text)',
     minWidth: 36,
     textAlign: 'center' as const,
+    fontFamily: 'var(--mono)',
   },
 } as const;
