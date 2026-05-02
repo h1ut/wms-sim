@@ -255,6 +255,7 @@ const styles = {
     flex: 1,
     display: 'flex',
     overflow: 'hidden',
+    position: 'relative' as const,
   },
   inspector: {
     position: 'absolute' as const,
