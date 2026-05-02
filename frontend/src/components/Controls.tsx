@@ -47,6 +47,7 @@ export default function Controls({
         <select value={algorithm} style={s.select}
           onChange={e => onSend({ type: 'set_algorithm', algorithm: e.target.value as 'astar' | 'prioritized' | 'cbs' })}>
           <option value="prioritized">Prioritized</option>
+          <option value="whca">WHCA* (Cooperative)</option>
           <option value="cbs">CBS (Optimal)</option>
           <option value="astar">A* (independent)</option>
         </select>

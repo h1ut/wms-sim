@@ -146,7 +146,7 @@ function GridPreview() {
 
 const s = {
   root: {
-    minHeight: '100vh',
+    height: '100%',
     background: '#0d0d1a',
     color: '#e0e0f0',
     fontFamily: 'ui-monospace, Consolas, monospace',

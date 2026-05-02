@@ -28,8 +28,9 @@ export default function MetricsPanel({
   score, onTimeCount, lateCount, slaLimit,
   throughputHistory, benchmarkResult,
 }: Props) {
-  const [collisionCost, setCollisionCost] = useState(500);
-  const [lateCost,      setLateCost]      = useState(200);
+  const [revenuePerOrder, setRevenuePerOrder] = useState(200);
+  const [collisionCost,   setCollisionCost]   = useState(500);
+  const [latePenalty,     setLatePenalty]     = useState(80);
   const pending    = orders.filter(o => o.status === 'pending').length;
   const assigned   = orders.filter(o => o.status === 'assigned').length;
   const inProgress = orders.filter(o => o.status === 'in_progress').length;
@@ -62,7 +63,11 @@ export default function MetricsPanel({
       <Divider />
 
       <Stat label="Tick"       value={tick.toLocaleString()} />
-      <Stat label="Algorithm"  value={metrics.algorithm === 'prioritized' ? 'Prioritized' : metrics.algorithm === 'cbs' ? 'CBS' : 'A* Indep.'} accent />
+      <Stat label="Algorithm"  value={
+        metrics.algorithm === 'prioritized' ? 'Prioritized' :
+        metrics.algorithm === 'cbs'         ? 'CBS'         :
+        metrics.algorithm === 'whca'        ? 'WHCA*'       : 'A* Indep.'
+      } accent />
       <Stat label="Speed"      value={`${metrics.tps} TPS`} />
 
       <Divider />
@@ -108,25 +113,33 @@ export default function MetricsPanel({
 
       <div style={s.sectionLabel}>ROI estimate</div>
       <div style={s.roiInputRow}>
+        <span style={s.roiInputLabel}>$/delivery</span>
+        <input type="number" value={revenuePerOrder} min={0} step={50}
+          onChange={e => setRevenuePerOrder(Number(e.target.value))}
+          style={s.roiInput} />
+      </div>
+      <div style={s.roiInputRow}>
         <span style={s.roiInputLabel}>$/collision</span>
         <input type="number" value={collisionCost} min={0} step={100}
           onChange={e => setCollisionCost(Number(e.target.value))}
           style={s.roiInput} />
       </div>
       <div style={s.roiInputRow}>
-        <span style={s.roiInputLabel}>$/late order</span>
-        <input type="number" value={lateCost} min={0} step={50}
-          onChange={e => setLateCost(Number(e.target.value))}
+        <span style={s.roiInputLabel}>$/SLA miss</span>
+        <input type="number" value={latePenalty} min={0} step={20}
+          onChange={e => setLatePenalty(Number(e.target.value))}
           style={s.roiInput} />
       </div>
       {(() => {
-        const losses  = metrics.collisions * collisionCost + lateCount * lateCost;
-        const revenue = onTimeCount * 50;
-        const net     = revenue - losses;
+        const revenue   = metrics.throughput * revenuePerOrder;
+        const colCost   = metrics.collisions * collisionCost;
+        const lateCost  = lateCount * latePenalty;
+        const net       = revenue - colCost - lateCost;
         return <>
-          <Stat label="Losses"  value={`-$${losses.toLocaleString()}`}  warn={losses > 0} />
-          <Stat label="Revenue" value={`+$${revenue.toLocaleString()}`} accent />
-          <Stat label="Net P&L" value={`$${net.toLocaleString()}`}
+          <Stat label="Revenue"    value={`+$${revenue.toLocaleString()}`} accent />
+          <Stat label="Collisions" value={colCost > 0 ? `-$${colCost.toLocaleString()}` : '$0'} warn={colCost > 0} />
+          <Stat label="SLA misses" value={lateCost > 0 ? `-$${lateCost.toLocaleString()}` : '$0'} warn={lateCost > 0} />
+          <Stat label="Net P&L"   value={`${net >= 0 ? '+' : ''}$${net.toLocaleString()}`}
                 accent={net >= 0} warn={net < 0} />
         </>;
       })()}

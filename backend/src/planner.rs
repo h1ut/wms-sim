@@ -258,7 +258,7 @@ pub fn compute_paths_astar(
 // ---------------------------------------------------------------------------
 
 /// Lookahead window (in ticks) used when building the reservation table.
-const LOOKAHEAD: usize = 80;
+const LOOKAHEAD: usize = 50;
 
 /// Plan all robots' paths using Prioritized Planning.
 ///
@@ -352,7 +352,8 @@ pub fn compute_paths_prioritized(
 // performs up to CBS_MAX_ITERS rounds of conflict detection + single-robot
 // replanning. In practice this resolves all conflicts for warehouse densities.
 
-const CBS_MAX_ITERS: usize = 40;
+const CBS_MAX_ITERS: usize = 30;
+const WHCA_WINDOW:   usize = 30;
 
 /// Position of robot `ri` at planning step `step` (0 = current position).
 fn pos_at(
@@ -368,13 +369,23 @@ fn pos_at(
     }
 }
 
-/// Find the first vertex conflict: two robots at the same cell at the same step.
-fn find_vertex_conflict(
+/// A conflict detected between two robots during CBS.
+enum Conflict {
+    /// Both robots occupy the same cell at the same time step.
+    Vertex { ri: usize, rj: usize, r: usize, c: usize, t: usize },
+    /// Two robots swap positions — each moves into the other's current cell.
+    /// `ri_target`/`rj_target` are where ri/rj are heading; `constraint_t` is
+    /// the tick they would arrive there.
+    Swap { ri: usize, rj: usize, ri_target: (usize, usize), rj_target: (usize, usize), constraint_t: usize },
+}
+
+/// Find the earliest conflict (vertex or swap) across all active robot pairs.
+fn find_first_conflict(
     active: &[usize],
     robots: &[Robot],
     paths: &HashMap<usize, Vec<(usize, usize)>>,
     start_t: usize,
-) -> Option<(usize, usize, usize, usize, usize)> {
+) -> Option<Conflict> {
     let max_steps = active.iter()
         .filter_map(|i| paths.get(i))
         .map(|p| p.len())
@@ -386,8 +397,23 @@ fn find_vertex_conflict(
             let pi = pos_at(ri, step, robots, paths);
             for &rj in &active[a + 1..] {
                 let pj = pos_at(rj, step, robots, paths);
+
                 if pi == pj {
-                    return Some((ri, rj, pi.0, pi.1, start_t + step));
+                    return Some(Conflict::Vertex { ri, rj, r: pi.0, c: pi.1, t: start_t + step });
+                }
+
+                // Swap conflict: ri moves to pj and rj moves to pi simultaneously.
+                if step < max_steps {
+                    let pi_next = pos_at(ri, step + 1, robots, paths);
+                    let pj_next = pos_at(rj, step + 1, robots, paths);
+                    if pi == pj_next && pj == pi_next {
+                        return Some(Conflict::Swap {
+                            ri, rj,
+                            ri_target: pi_next,
+                            rj_target: pj_next,
+                            constraint_t: start_t + step + 1,
+                        });
+                    }
                 }
             }
         }
@@ -470,16 +496,35 @@ pub fn compute_paths_cbs(
 
     // Iterative conflict resolution.
     for _ in 0..CBS_MAX_ITERS {
-        let Some((ri, rj, r, c, t)) = find_vertex_conflict(&active, robots, &paths, current_tick) else { break };
+        match find_first_conflict(&active, robots, &paths, current_tick) {
+            None => break,
 
-        // Constrain the robot whose path is longer (less re-routing on the other one).
-        let longer = if paths.get(&ri).map_or(0, |p| p.len()) >= paths.get(&rj).map_or(0, |p| p.len()) { ri } else { rj };
-        extra.entry(longer).or_default().insert((r, c, t));
+            Some(Conflict::Vertex { ri, rj, r, c, t }) => {
+                // Constrain the robot with the longer path — it has more room to
+                // reroute without a large cost increase.
+                let longer = if paths.get(&ri).map_or(0, |p| p.len())
+                    >= paths.get(&rj).map_or(0, |p| p.len()) { ri } else { rj };
+                extra.entry(longer).or_default().insert((r, c, t));
+                if let Some(p) = replan_robot(longer, robots, orders, grid, &base_res, &extra, &paths, current_tick, max_t) {
+                    paths.insert(longer, p);
+                } else {
+                    paths.remove(&longer);
+                }
+            }
 
-        if let Some(new_path) = replan_robot(longer, robots, orders, grid, &base_res, &extra, &paths, current_tick, max_t) {
-            paths.insert(longer, new_path);
-        } else {
-            paths.remove(&longer); // no path found under constraints
+            Some(Conflict::Swap { ri, rj, ri_target, rj_target, constraint_t }) => {
+                // Both robots must be blocked from arriving at each other's cells.
+                // Constrain both and replan both.
+                extra.entry(ri).or_default().insert((ri_target.0, ri_target.1, constraint_t));
+                extra.entry(rj).or_default().insert((rj_target.0, rj_target.1, constraint_t));
+                for &robot in &[ri, rj] {
+                    if let Some(p) = replan_robot(robot, robots, orders, grid, &base_res, &extra, &paths, current_tick, max_t) {
+                        paths.insert(robot, p);
+                    } else {
+                        paths.remove(&robot);
+                    }
+                }
+            }
         }
     }
 
@@ -494,6 +539,92 @@ pub fn compute_paths_cbs(
         }
     }
     (total, count)
+}
+
+// ---------------------------------------------------------------------------
+// Strategy 4: WHCA* (Windowed Hierarchical Cooperative A*)
+// ---------------------------------------------------------------------------
+//
+// Like Prioritized Planning, but with two key improvements:
+//
+//   • Dynamic priority: each tick, robots are sorted by urgency (remaining path
+//     length + distance-to-goal, descending). The robot furthest from its goal
+//     gets planned first and picks the shortest conflict-free route; closer
+//     robots route around it. This prevents permanently-low-ID robots from
+//     being perpetually deprioritized.
+//
+//   • Shorter window (WHCA_WINDOW = 30 ticks vs LOOKAHEAD = 50). Smaller search
+//     space → faster per-robot A* calls. The plan is replanned every tick so
+//     there is no loss of quality over the lookahead horizon.
+
+/// Plan all robots using WHCA*.
+pub fn compute_paths_whca(
+    grid: &Grid,
+    robots: &mut Vec<Robot>,
+    orders: &[Order],
+    current_tick: usize,
+) -> (usize, usize) {
+    let max_t = current_tick + WHCA_WINDOW;
+    let mut reservation = SpaceTimeReservation::new();
+
+    for robot in robots.iter() {
+        if needs_path(robot) { continue; }
+        for t in current_tick..=max_t {
+            reservation.insert((robot.row, robot.col, t), ());
+        }
+    }
+
+    // Sort by urgency descending: remaining planned steps first, then
+    // distance-to-goal as tie-breaker. Higher urgency → planned first → right-of-way.
+    let mut indices: Vec<usize> = (0..robots.len())
+        .filter(|&i| needs_path(&robots[i]))
+        .collect();
+
+    indices.sort_unstable_by(|&a, &b| {
+        let urgency = |i: usize| -> (usize, usize) {
+            let dist = robot_goal(&robots[i], orders)
+                .map(|g| robots[i].distance_to(g.0, g.1))
+                .unwrap_or(0);
+            (robots[i].path.len() + dist, dist)
+        };
+        urgency(b).cmp(&urgency(a))
+    });
+
+    let mut total_steps = 0usize;
+    let mut computed    = 0usize;
+
+    for ri in indices {
+        let start = (robots[ri].row, robots[ri].col);
+        let goal  = match robot_goal(&robots[ri], orders) {
+            Some(g) => g,
+            None    => continue,
+        };
+
+        match astar_spacetime(grid, start, goal, current_tick, &reservation, max_t) {
+            Some(path) => {
+                reservation.insert((start.0, start.1, current_tick), ());
+                for (step, &(r, c)) in path.iter().enumerate() {
+                    reservation.insert((r, c, current_tick + step + 1), ());
+                }
+                let arrival_t = current_tick + path.len();
+                let (fr, fc) = path.last().copied().unwrap_or(start);
+                for t in arrival_t..=max_t {
+                    reservation.insert((fr, fc, t), ());
+                }
+                total_steps += path.len();
+                computed    += 1;
+                robots[ri].path = path;
+            }
+            None => {
+                for t in current_tick..=max_t {
+                    reservation.insert((start.0, start.1, t), ());
+                }
+                robots[ri].path.clear();
+            }
+        }
+    }
+
+    (total_steps, computed)
 }
 
 #[cfg(test)]

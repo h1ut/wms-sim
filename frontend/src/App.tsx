@@ -271,7 +271,7 @@ const styles = {
   sidebar: {
     display: 'flex',
     flexDirection: 'column' as const,
-    overflow: 'hidden',
+    overflowY: 'auto' as const,
     flexShrink: 0,
   },
 } as const;

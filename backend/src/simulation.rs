@@ -32,14 +32,16 @@ pub enum Algorithm {
     AStar,
     Prioritized,
     CBS,
+    WHCA,
 }
 
 impl Algorithm {
     pub fn name(self) -> &'static str {
         match self {
-            Algorithm::AStar      => "astar",
+            Algorithm::AStar       => "astar",
             Algorithm::Prioritized => "prioritized",
-            Algorithm::CBS        => "cbs",
+            Algorithm::CBS         => "cbs",
+            Algorithm::WHCA        => "whca",
         }
     }
 }
@@ -164,6 +166,9 @@ impl SimulationState {
                 &self.grid, &mut self.robots, &self.orders, self.tick as usize,
             ),
             Algorithm::CBS => planner::compute_paths_cbs(
+                &self.grid, &mut self.robots, &self.orders, self.tick as usize,
+            ),
+            Algorithm::WHCA => planner::compute_paths_whca(
                 &self.grid, &mut self.robots, &self.orders, self.tick as usize,
             ),
         };
@@ -315,6 +320,7 @@ impl SimulationState {
                 self.algorithm = match algorithm.as_str() {
                     "astar" => Algorithm::AStar,
                     "cbs"   => Algorithm::CBS,
+                    "whca"  => Algorithm::WHCA,
                     _       => Algorithm::Prioritized,
                 };
             }
