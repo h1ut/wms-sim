@@ -8,7 +8,7 @@ import { useWebSocket } from './hooks/useWebSocket';
 import LandingPage from './pages/LandingPage';
 import type { PlacementMode } from './types';
 
-const WS_URL = `ws://${window.location.host}/ws`;
+const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
 
 export default function App() {
   const [page, setPage]               = useState<'landing' | 'sim'>('landing');
